@@ -11,8 +11,25 @@ import { styled, alpha } from '@mui/material/styles';
 import InputBase from '@mui/material/InputBase';
 import axios from "axios";
 import { TextField } from '@mui/material';
-import List from './List';
+import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import Typography from '@mui/material/Typography';
 
+import Modal from '@mui/material/Modal';
+import Box from '@mui/material/Box';
+
+const style = {
+  position: 'absolute',
+  top: '40%',
+  left: '80%',
+  transform: 'translate(-50%, -50%)',
+  width: 500,
+  height:400,
+  bgcolor: 'background.paper',
+  border: '2px solid #000',
+  boxShadow: 24,
+  p: 4,
+};
 
 
 const Home = () => {
@@ -64,66 +81,127 @@ const Home = () => {
       }
 
       const [data, setData] = useState([]);
-      const [search,setSearch]=useState('');
-      const [dataSource,setDataSource]= useState(data);
-      const [filterTable,setTableFilter]=useState([])
+      const [search,setSearch]=useState(''); //search state
+      const [order,setOrder]=useState(true); //state for sorting the table
+      const [currentUserid,setCurrentUserId]=useState(null);
+      const [user,setUser]=useState([]);
+      const [currtodo,setCurrtodo]=useState(null);
+      
+      
+      //modal
 
-      const handleSearch=(e)=>{
- 
-        if(e.target.value!==""){
-          setSearch(e.target.value);
-          const filterTable=dataSource.filter((row) =>
-          // note that I've incorporated the searchedVal length check here
-          !search.length 
-            .toString()
-            .toLowerCase()
-            .includes(search.toString().toLowerCase()) 
-        )
+      const [open, setOpen] = useState(false); //modal state
+    
 
-            
-            
-            setTableFilter([...filterTable]);
-            console.log('datasource',dataSource);
-            console.log('filter->',filterTable);
-        }
-        else{
-          setSearch(e.target.value);
-          setDataSource([...dataSource])
-        }
+      const handleClickOpen = (row) => {
+        
+        setCurrentUserId(row.userId); //current user's id
+       
+        setCurrtodo(row.id);
+        setOpen(true);
+      };
+      
+      const handleClose = (value) => {
+        setOpen(false);
+      };
+      console.log('currtodo',currtodo);
+      console.log('current',currentUserid);
 
-        // let lowerCase = e.target.value.toLowerCase();
-        // setSearch(lowerCase);
+      //modal
+
+
+     
+      const handleSearch=(value)=>{
+        setSearch(value);
       }
 
+
+      const getUserData=async ()=>{
+        const metadata=await axios.get(`https://jsonplaceholder.typicode.com/users`);
+        // console.log('userdata',metadata.data);
+        setUser(metadata.data);
+      }
      
 
       const getData = async () => {
         const todos = await axios.get(`https://jsonplaceholder.typicode.com/todos`);
-        console.log(todos.data)
+        // console.log(todos.data)
         setData(todos.data);
       };
 
       useEffect(() => {
         getData();
+        getUserData();
       }, [])
-      
-      
-      
-    //   const rows = [
-    //     createData('Frozen yoghurt', 159, 6.0),
-    //     createData('Ice cream sandwich', 237, 9.0),
-    //     createData('Eclair', 262, 16.0),
-    //     createData('Cupcake', 305, 3.7),
-    //     createData('Gingerbread', 356, 16.0),
-    //   ];
 
-      let res=data;
+      const handleD=()=>{
+        setOrder(false);
+      }
+      const handleI=()=>{
+        setOrder(true);
+      }
+      let res=null; //res will contain filtered data
+
+      //search logic
+      if(search!==''){
+        res=data.filter((row)=>{
+          return (
+            row.title
+              .toString()
+              .toLowerCase()
+              .includes(search.toString().toLowerCase()) ||
+            row.id
+              .toString()
+              .toLowerCase()
+              .includes(search.toString().toLowerCase()) ||
+            row.userId
+              .toString()
+              .toLowerCase()
+              .includes(search.toString().toLowerCase())
+          );
+        })
+      }
+      else{
+        res=data;
+      }
+      //search logic
+
+      console.log('order',order);
+      //sorting logic
+      if(order===true){
+        res.sort((a,b)=>{
+          
+          return a.id>b.id?1:-1;
+        })
+      }
+      else{
+        res.sort((a,b)=>{
+          return a.id<b.id?1:-1;
+        })
+      }
+    //sorting logic
+
+      
       const rows=[];
       res.map((todoObj)=>{
         let rowfield=createData(todoObj.id,todoObj.title,todoObj.completed);
         rows.push(rowfield);
         // console.log(rows);
       })
+
+      let currentuser=user.filter((user)=>{
+        return user.id===currentUserid;
+      })
+
+      // console.log('current user',currentuser);
+
+    let currentusertodo=null;//this will store current user's info from todolist  
+     if(open===true){
+      currentusertodo=res.filter((obj)=>{
+        return obj.id===currtodo
+      })
+      console.log('currentusertodo',currentusertodo);
+     }
 
   return (
     <>
@@ -138,25 +216,25 @@ const Home = () => {
           variant="outlined"
           fullWidth
           label="Search"
-          onChange={handleSearch}
+          onChange={(e)=>{handleSearch(e.target.value)}}
           value={search}
           style={{display:'flex',justifyContent:'space-between',marginLeft:'60%',minWidth:'190%'}}
         />
         
             </p>
-             {/* <List data={res} input={search}/> */}
+             
            
         </TableHead>
         <TableHead>
           <TableRow>
-            <TableCell size='medium' align='center' style={{fontWeight:'bolder'}} >Todo ID</TableCell>
+            <TableCell size='medium' align='center' style={{fontWeight:'bolder'}} >Todo ID<ArrowDropUpIcon onClick={handleD} style={{fontSize:'200%',cursor:'pointer'}}/><ArrowDropDownIcon onClick={handleI} style={{fontSize:'200%',cursor:'pointer'}}/></TableCell>
             <TableCell align="center" style={{fontWeight:'bolder'}}>Title</TableCell>
             <TableCell align="center" style={{fontWeight:'bolder'}}>Status</TableCell>
             <TableCell align="center" style={{fontWeight:'bolder'}}>Action</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {search.length>0 ?filterTable.map((row) => (
+          {res.map((row) => (
             <TableRow
               key={row.id}
               sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
@@ -166,32 +244,52 @@ const Home = () => {
               </TableCell>
               <TableCell align="center">{row.title}</TableCell>
               <TableCell align="center">{(row.completed===true)?'completed':'incomplete'}</TableCell>
-              <TableCell align="center"><Button variant="contained" size='small' style={{maxWidth:'2rem',maxHeight:'2.5rem'}}>View User</Button></TableCell>
-              
+              <TableCell align="center"><Button variant="contained" size='small' style={{maxWidth:'2rem',maxHeight:'2.5rem'}} onClick={()=>{handleClickOpen(row)}}>View User</Button></TableCell>
+            
             </TableRow>
           ))
-        :
-        rows.map((row) => (
-          <TableRow
-            key={row.id}
-            sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-          >
-            <TableCell component="th" scope="row" align='center'>
-              {row.id}
-            </TableCell>
-            <TableCell align="center">{row.title}</TableCell>
-            <TableCell align="center">{(row.completed===true)?'completed':'incomplete'}</TableCell>
-            <TableCell align="center"><Button variant="contained" size='small' style={{maxWidth:'2rem',maxHeight:'2.5rem'}}>View User</Button></TableCell>
-            
-          </TableRow>
-        ))
         }
         </TableBody>
       </Table>
     </TableContainer>
+
+    <Modal
+        open={open}
+        onClose={handleClose}
+        aria-labelledby="modal-modal-title"
+        aria-describedby="modal-modal-description"
+      >
+        <Box sx={style}>
+          <Typography id="modal-modal-title" variant="h4" component="h2" align='center' >
+            User Details
+          </Typography>
+          <br></br>
+          <Typography id="modal-modal-description" sx={{ mt: 2 }} align='center' variant='inherit'>
+            TodoID:  {(open)?currentusertodo[0].id:""}
+          </Typography>
+          <br></br>
+          <Typography id="modal-modal-description" sx={{ mt: 2 }} align='center' variant='inherit'>
+           Todo Title:  {(open)?currentusertodo[0].title:""}
+          </Typography>
+          <br></br>
+          <Typography id="modal-modal-description" sx={{ mt: 2 }} align='center' variant='inherit'>
+            User ID:  {(open)?currentUserid:null}
+          </Typography>
+          <br></br>
+          <Typography id="modal-modal-description" sx={{ mt: 2 }} align='center' variant='inherit'>
+            Name:  {(open)?currentuser[0].name:null}
+          </Typography>
+          <br></br>
+          <Typography id="modal-modal-description" sx={{ mt: 2 }} align='center' variant='inherit'>
+          Email:  {(open)?currentuser[0].email:null}
+          </Typography>
+          <br></br>
+        </Box>
+      </Modal>
 
     </>
   )
 }
 
 export default Home
+
